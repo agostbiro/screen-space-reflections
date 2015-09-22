@@ -1,4 +1,5 @@
-// TODO (abiro) style
+// TODO (abiro) standard style
+// TODO (abiro) magic numbers
 
 'use strict';
 
@@ -27,11 +28,21 @@ window.onload = function onload()
 
     camera = createCanvasOrbitCamera(canvas),
 
+    // A simple directional light
+    lightWorldPosition = [0, 100, 100],
+    lightViewPosition = vec3.create(),
+
     bunnyGeo = glGeometry(gl),
     floorGeo = glGeometry(gl),
     teapotGeo = glGeometry(gl),
 
+    ambientLightColor = [0.33, 0.33, 0.33],
+    bunnyDiffuseColor = [0.78, 0.41, 0.29],
     floorTexture = createTexture(gl, document.getElementById('floor-texture')),
+    floorShininess = 20,
+    floorSpecularColor = [0.8, 0.8, 0.8],
+    teaPotSpecularColor = [0.9, 0.9, 0.9],
+    teaPotShininess = 1,
     
     bunnyShader = glShader(
       gl,
@@ -69,7 +80,20 @@ window.onload = function onload()
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    mat4.perspective(
+      projectionMatrix,
+      Math.PI / 4,
+      gl.drawingBufferWidth / gl.drawingBufferHeight,
+      1,
+      300
+    );
+
+    vec3.transformMat4(lightViewPosition, lightWorldPosition, viewMatrix);
+
     bunnyGeo.bind(bunnyShader);
+    bunnyShader.uniforms.uAmbientLightColor = ambientLightColor;
+    bunnyShader.uniforms.uDiffuseColor = bunnyDiffuseColor;
+    bunnyShader.uniforms.uLightPosition = lightViewPosition;
     bunnyShader.uniforms.uModel = bunnyModelMatrix;
     bunnyShader.uniforms.uView = viewMatrix;
     bunnyShader.uniforms.uProjection = projectionMatrix;
@@ -77,17 +101,25 @@ window.onload = function onload()
     bunnyGeo.unbind();
 
     floorGeo.bind(floorShader);
+    floorShader.uniforms.uAmbientLightColor = ambientLightColor;
+    floorShader.uniforms.uLightPosition = lightViewPosition;
     floorShader.uniforms.uModel = floorModelMatrix;
     floorShader.uniforms.uView = viewMatrix;
     floorShader.uniforms.uProjection = projectionMatrix;
+    floorShader.uniforms.uShininess = floorShininess;
+    floorShader.uniforms.uSpecularColor = floorSpecularColor;
     floorShader.uniforms.uTexture = floorTexture.bind();
     floorGeo.draw();
     floorGeo.unbind();
 
     teapotGeo.bind(teapotShader);
+    teapotShader.uniforms.uAmbientLightColor = ambientLightColor;
+    teapotShader.uniforms.uLightPosition = lightViewPosition;
     teapotShader.uniforms.uModel = teapotModelMatrix;
     teapotShader.uniforms.uView = viewMatrix;
     teapotShader.uniforms.uProjection = projectionMatrix;
+    teapotShader.uniforms.uShininess = teaPotShininess;
+    teapotShader.uniforms.uSpecularColor = teaPotSpecularColor;
     teapotGeo.draw();
     teapotGeo.unbind();
 
@@ -140,27 +172,25 @@ window.onload = function onload()
   teapotGeo.faces(teapot.cells);
   teapotBoundingBox = boundingBox(teapot.positions);
 
-  // TODO (abiro) magic numbers
-  mat4.perspective(
-    projectionMatrix,
-    Math.PI / 4,
-    gl.drawingBufferWidth / gl.drawingBufferHeight,
-    1,
-    300
-  );
-
   mat4.scale(bunnyModelMatrix, bunnyModelMatrix, [2, 2, 2]);
   mat4.translate(
     bunnyModelMatrix, 
     bunnyModelMatrix, 
     [-20, Math.abs(bunnyBoundingBox[0][1]) * 2, 0]
   );
+  mat4.rotateY(bunnyModelMatrix, bunnyModelMatrix, Math.PI / 2);
 
   mat4.translate(
     teapotModelMatrix, 
     teapotModelMatrix, 
     [0, Math.abs(teapotBoundingBox[0][1]), 0]
   );
-  
+  mat4.rotateY(teapotModelMatrix, teapotModelMatrix, Math.PI / 2);
+
   drawObjects();
+
+  console.log(normals.vertexNormals(
+      floor.cells,
+      floor.positions
+    ))
 }
