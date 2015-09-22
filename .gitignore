@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+bundle.js
+*.txt
+*.DS_Store
+*Icon*
+*.gz
+*.jp*g
+*.png
