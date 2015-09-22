@@ -8,19 +8,23 @@
     ]
   },
   "scripts": {
-    "start": "watchify ./demo/index.js -o ./demo/bundle.js --delay 400 -v -d & http-server ./demo -p 8001 -o &",
-    "test": "watchify ./test/test.js -o ./test/bundle.js --delay 400 -v -d & http-server ./test -p 8002 -o &"
+    "start": "watchify ./demo/index.js -o ./demo/bundle.js --delay 400 -v -d & http-server ./demo -p 8001 -o",
+    "test": "watchify ./test/test.js -o ./test/bundle.js --delay 400 -v -d & http-server ./test -p 8002 -o"
   },
   "dependencies": {
     "bunny": "^1.0.1",
+    "canvas-fit": "^1.4.0",
+    "canvas-orbit-camera": "^1.0.2",
     "gl-geometry": "^1.1.1",
     "gl-mat4": "^1.1.4",
-    "gl-vec3": "^1.0.3",
     "gl-shader": "^4.0.5",
+    "gl-texture2d": "^2.0.9",
+    "gl-vec3": "^1.0.3",
     "glslify": "^2.2.1",
     "normals": "^1.0.0",
     "teapot": "^1.0.0",
     "underscore": "^1.8.3",
+    "vertices-bounding-box": "^1.0.0",
     "webgl-context": "^2.2.0"
   },
   "devDependencies": {
