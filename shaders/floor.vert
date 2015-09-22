@@ -1,3 +1,6 @@
+#pragma glslify: transpose = require('glsl-transpose')
+#pragma glslify: inverse = require('glsl-inverse')
+
 attribute vec2 aTexCo;
 
 attribute vec3 
@@ -6,17 +9,34 @@ attribute vec3
 
 varying vec2 vTexCo;
 
-varying vec3 vNormal;
+varying vec3
+  vNormal,
+  vViewPos;
 
 uniform mat4 
   uModel,
   uProjection,
   uView;
 
+mat3 normalMatrix;
+
+mat4 modelViewMatrix;
+
+vec4 viewPos;
+
 void main() 
 {
-  vNormal = aNormal;
   vTexCo = aTexCo;
 
-  gl_Position = uProjection * uView * uModel * vec4(aPos, 1.0);
+  modelViewMatrix = uView * uModel;
+
+  normalMatrix = transpose(inverse(mat3(modelViewMatrix)));
+
+  vNormal = normalize(normalMatrix * aNormal);
+  
+  viewPos = modelViewMatrix * vec4(aPos, 1.0);
+
+  vViewPos = viewPos.xyz;
+
+  gl_Position = uProjection * viewPos;
 }
