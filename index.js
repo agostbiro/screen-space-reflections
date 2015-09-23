@@ -8,7 +8,9 @@ var _ = require('underscore');
 var boundingBox = require('vertices-bounding-box');
 var bunny = require('bunny');
 var createCanvasOrbitCamera = require('canvas-orbit-camera');
+var createFBO = require("gl-fbo");
 var createTexture = require("gl-texture2d");
+var createViewAlignedSquare = require('../lib/view-aligned-square.js');
 var fitCanvas = require('canvas-fit');
 var floor = require('./lib/floor.js');
 var getContext = require('webgl-context');
@@ -25,20 +27,38 @@ window.onload = function onload()
   var
     canvas = document.getElementById('gl-canvas'),
     gl = getContext({canvas: canvas}),
+    WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
+    OES_texture_float_extension = gl.getExtension('OES_texture_float'),
+
+    // Color buffers are eye-space position, eye-space normal, diffuse color
+    // and specular color, respectively. A value larger than 0 in the alpha
+    // channels of the diffuse and specular colors means the appropriate
+    // lightning model is used.
+    deferredShadingFbo = createFBO(
+      gl,
+      [gl.drawingBufferWidth, gl.drawingBufferHeight],
+      {
+        float: true,
+        color: 5
+      }
+    ),
 
     camera = createCanvasOrbitCamera(canvas),
 
-    // A simple directional light
+    // A simple directional light.
     lightWorldPosition = [0, 100, 100],
     lightViewPosition = vec3.create(),
 
     bunnyGeo = glGeometry(gl),
     floorGeo = glGeometry(gl),
     teapotGeo = glGeometry(gl),
+    viewAlignedSquareGeo = createViewAlignedSquare(gl, 'aPos', 'aTexCo'),
 
     ambientLightColor = [0.33, 0.33, 0.33],
     bunnyDiffuseColor = [0.78, 0.41, 0.29],
     floorTexture = createTexture(gl, document.getElementById('floor-texture')),
+    
+    // TODO (abiro) Floor is too shiny, use more advanced material model.
     floorShininess = 20,
     floorSpecularColor = [0.8, 0.8, 0.8],
     teaPotSpecularColor = [0.9, 0.9, 0.9],
@@ -46,18 +66,23 @@ window.onload = function onload()
     
     bunnyShader = glShader(
       gl,
-      glslify('./shaders/generic.vert'),
-      glslify('./shaders/bunny.frag')
+      glslify('./shaders/cache-for-deferred.vert'),
+      glslify('./shaders/cache-for-deferred.frag')
+    ),
+    deferredLightningShader = glShader(
+      gl,
+      glslify('./shaders/deferred-lightning.vert'),
+      glslify('./shaders/deferred-lightning.frag')
     ),
     floorShader = glShader(
       gl,
-      glslify('./shaders/floor.vert'),
-      glslify('./shaders/floor.frag')
+      glslify('./shaders/cache-for-deferred-w-tex.vert'),
+      glslify('./shaders/cache-for-deferred-w-tex.frag')
     ),
     teapotShader = glShader(
       gl,
-      glslify('./shaders/generic.vert'),
-      glslify('./shaders/teapot.frag')
+      glslify('./shaders/cache-for-deferred.vert'),
+      glslify('./shaders/cache-for-deferred.frag')
     ),
 
     bunnyModelMatrix = mat4.create(),
@@ -73,12 +98,16 @@ window.onload = function onload()
 
   function drawObjects()
   {
+    var dls;
+
     camera.view(viewMatrix);
     camera.tick();
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    // TODO (abiro) Will this rebuild the FBO on each frame or only
+    // if the values actually changed?
+    deferredShadingFbo.shape = [gl.drawingBufferWidth, gl.drawingBufferHeight];
 
     mat4.perspective(
       projectionMatrix,
@@ -90,47 +119,72 @@ window.onload = function onload()
 
     vec3.transformMat4(lightViewPosition, lightWorldPosition, viewMatrix);
 
+    deferredShadingFbo.bind();
+
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+
     bunnyGeo.bind(bunnyShader);
-    bunnyShader.uniforms.uAmbientLightColor = ambientLightColor;
     bunnyShader.uniforms.uDiffuseColor = bunnyDiffuseColor;
-    bunnyShader.uniforms.uLightPosition = lightViewPosition;
     bunnyShader.uniforms.uModel = bunnyModelMatrix;
     bunnyShader.uniforms.uView = viewMatrix;
     bunnyShader.uniforms.uProjection = projectionMatrix;
+    bunnyShader.uniforms.uShininess = 0;
+    bunnyShader.uniforms.uUseDiffuseLightning = 1;
     bunnyGeo.draw();
     bunnyGeo.unbind();
 
     floorGeo.bind(floorShader);
-    floorShader.uniforms.uAmbientLightColor = ambientLightColor;
-    floorShader.uniforms.uLightPosition = lightViewPosition;
     floorShader.uniforms.uModel = floorModelMatrix;
     floorShader.uniforms.uView = viewMatrix;
     floorShader.uniforms.uProjection = projectionMatrix;
     floorShader.uniforms.uShininess = floorShininess;
     floorShader.uniforms.uSpecularColor = floorSpecularColor;
     floorShader.uniforms.uTexture = floorTexture.bind();
+    floorShader.uniforms.uUseDiffuseLightning = 1;
     floorGeo.draw();
     floorGeo.unbind();
 
     teapotGeo.bind(teapotShader);
-    teapotShader.uniforms.uAmbientLightColor = ambientLightColor;
-    teapotShader.uniforms.uLightPosition = lightViewPosition;
     teapotShader.uniforms.uModel = teapotModelMatrix;
     teapotShader.uniforms.uView = viewMatrix;
     teapotShader.uniforms.uProjection = projectionMatrix;
     teapotShader.uniforms.uShininess = teaPotShininess;
     teapotShader.uniforms.uSpecularColor = teaPotSpecularColor;
+    teapotShader.uniforms.uUseDiffuseLightning = 0;
     teapotGeo.draw();
     teapotGeo.unbind();
 
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    gl.clearColor(0.9, 0.95, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    dls = deferredLightningShader;
+    viewAlignedSquareGeo.bind(dls);
+    dls.uniforms.uAmbientLightColor = ambientLightColor;
+    dls.uniforms.uLightPosition = lightViewPosition;
+    dls.uniforms.uViewPosSampler = deferredShadingFbo.color[0].bind(0);
+    dls.uniforms.uNormalSampler = deferredShadingFbo.color[1].bind(1);
+    dls.uniforms.uDiffuseColorSampler = deferredShadingFbo.color[2].bind(2);
+    dls.uniforms.uSpecularColorSampler = deferredShadingFbo.color[3].bind(3);
+    viewAlignedSquareGeo.draw();
+    viewAlignedSquareGeo.unbind();
+
     window.requestAnimationFrame(drawObjects);
   }
+
+  if (!WEBGL_draw_buffers_extension)
+    throw new Error('The WEBGL_draw_buffers extension is unavailable.')
+  
+  if (!OES_texture_float_extension)
+    throw new Error('The OES_texture_float extension is unavailable.')
 
   window.addEventListener('resize', fitCanvas(canvas), false);
 
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.CULL_FACE);
-  gl.clearColor(0.9, 0.95, 1, 1);
 
   bunnyGeo.attr('aPos', bunny.positions);
   bunnyGeo.attr(
@@ -145,7 +199,6 @@ window.onload = function onload()
 
   floorGeo.attr('aPos', floor.positions);
   
-  // TODO (abiro) normals are wrong
   floorGeo.attr(
     'aNormal',
     normals.vertexNormals(
@@ -156,6 +209,7 @@ window.onload = function onload()
   floorGeo.attr('aTexCo', floor.texCos, {size: 2});
   floorGeo.faces(floor.cells);
 
+  // TODO (abiro) Use anisotropic filtering.
   floorTexture.wrap = [gl.REPEAT, gl.REPEAT];
   floorTexture.magFilter = gl.LINEAR;
   floorTexture.minFilter = gl.LINEAR_MIPMAP_LINEAR;
@@ -188,9 +242,4 @@ window.onload = function onload()
   mat4.rotateY(teapotModelMatrix, teapotModelMatrix, Math.PI / 2);
 
   drawObjects();
-
-  console.log(normals.vertexNormals(
-      floor.cells,
-      floor.positions
-    ))
 }
