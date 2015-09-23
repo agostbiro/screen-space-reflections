@@ -1,22 +1,20 @@
+precision highp float;
+
 #pragma glslify: transpose = require('glsl-transpose')
 #pragma glslify: inverse = require('glsl-inverse')
 
-attribute vec2 aTexCo;
-
 attribute vec3 
-  aPos,
+  aPos, 
   aNormal;
-
-varying vec2 vTexCo;
-
-varying vec3
-  vNormal,
-  vViewPos;
 
 uniform mat4 
   uModel,
   uProjection,
   uView;
+
+varying vec3 
+  vNormal,
+  vViewPos;
 
 mat3 normalMatrix;
 
@@ -24,10 +22,9 @@ mat4 modelViewMatrix;
 
 vec4 viewPos;
 
+// TODO (abiro) Move normal matrix computation to CPU.
 void main() 
 {
-  vTexCo = aTexCo;
-
   modelViewMatrix = uView * uModel;
 
   normalMatrix = transpose(inverse(mat3(modelViewMatrix)));
