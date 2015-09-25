@@ -17,6 +17,7 @@ var getContext = require('webgl-context');
 var glGeometry = require('gl-geometry');
 var glShader = require('gl-shader');
 var glslify = require('glslify');
+var initCopy = require('./lib/copy/copy.js');
 var normals = require('normals');
 var mat4 = require('gl-mat4');
 var teapot = require('teapot');
@@ -30,6 +31,8 @@ window.onload = function onload()
     WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
     OES_texture_float_extension = gl.getExtension('OES_texture_float'),
 
+    copy = initCopy(gl),
+
     // Color buffers are eye-space position, eye-space normal, diffuse color
     // and specular color, respectively. A value larger than 0 in the alpha
     // channels of the diffuse and specular colors means the appropriate
@@ -39,8 +42,13 @@ window.onload = function onload()
       [gl.drawingBufferWidth, gl.drawingBufferHeight],
       {
         float: true,
-        color: 5
+        color: 4
       }
+    ),
+
+    firstPassFbo = createFBO(
+      gl, 
+      [gl.drawingBufferWidth, gl.drawingBufferHeight]
     ),
 
     camera = createCanvasOrbitCamera(canvas),
@@ -79,6 +87,11 @@ window.onload = function onload()
       glslify('./shaders/cache-for-deferred-w-tex.vert'),
       glslify('./shaders/cache-for-deferred-w-tex.frag')
     ),
+    screenSpaceReflectionsShader = glShader(
+      gl,
+      glslify('../src/screen-space-reflections.vert'),
+      glslify('../src/screen-space-reflections.frag')
+    ),
     teapotShader = glShader(
       gl,
       glslify('./shaders/cache-for-deferred.vert'),
@@ -98,7 +111,9 @@ window.onload = function onload()
 
   function drawObjects()
   {
-    var dls;
+    var 
+      dls,
+      ssr;
 
     camera.view(viewMatrix);
     camera.tick();
@@ -108,6 +123,7 @@ window.onload = function onload()
     // TODO (abiro) Will this rebuild the FBO on each frame or only
     // if the values actually changed?
     deferredShadingFbo.shape = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+    firstPassFbo.shape = [gl.drawingBufferWidth, gl.drawingBufferHeight];
 
     mat4.perspective(
       projectionMatrix,
@@ -124,7 +140,6 @@ window.onload = function onload()
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-
     bunnyGeo.bind(bunnyShader);
     bunnyShader.uniforms.uDiffuseColor = bunnyDiffuseColor;
     bunnyShader.uniforms.uModel = bunnyModelMatrix;
@@ -132,14 +147,15 @@ window.onload = function onload()
     bunnyShader.uniforms.uProjection = projectionMatrix;
     bunnyShader.uniforms.uShininess = 0;
     bunnyShader.uniforms.uUseDiffuseLightning = 1;
-    bunnyGeo.draw();
+    //bunnyGeo.draw();
     bunnyGeo.unbind();
 
     floorGeo.bind(floorShader);
     floorShader.uniforms.uModel = floorModelMatrix;
     floorShader.uniforms.uView = viewMatrix;
     floorShader.uniforms.uProjection = projectionMatrix;
-    floorShader.uniforms.uShininess = floorShininess;
+    //floorShader.uniforms.uShininess = floorShininess;
+    floorShader.uniforms.uShininess = 0;
     floorShader.uniforms.uSpecularColor = floorSpecularColor;
     floorShader.uniforms.uTexture = floorTexture.bind();
     floorShader.uniforms.uUseDiffuseLightning = 1;
@@ -156,11 +172,11 @@ window.onload = function onload()
     teapotGeo.draw();
     teapotGeo.unbind();
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
+    firstPassFbo.bind();
     gl.clearColor(0.9, 0.95, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // TODO (abiro) antialiasing
     dls = deferredLightningShader;
     viewAlignedSquareGeo.bind(dls);
     dls.uniforms.uAmbientLightColor = ambientLightColor;
@@ -171,6 +187,25 @@ window.onload = function onload()
     dls.uniforms.uSpecularColorSampler = deferredShadingFbo.color[3].bind(3);
     viewAlignedSquareGeo.draw();
     viewAlignedSquareGeo.unbind();
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    ssr = screenSpaceReflectionsShader;
+    viewAlignedSquareGeo.bind(ssr);
+    ssr.uniforms.uFbo = {
+      viewPosSampler: deferredShadingFbo.color[0].bind(0),
+      normalSampler: deferredShadingFbo.color[1].bind(1),
+      colorSampler: deferredShadingFbo.color[2].bind(2),
+      isSpecularSampler: deferredShadingFbo.color[3].bind(3)
+    };
+    ssr.uniforms.uFirstPassColorSampler = firstPassFbo.color[0].bind(4);
+    ssr.uniforms.uProjection = projectionMatrix;
+    viewAlignedSquareGeo.draw();
+    viewAlignedSquareGeo.unbind();
+
+    // Copy to window buffer.
+    //copy(firstPassFbo.color[0], 0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
     window.requestAnimationFrame(drawObjects);
   }
@@ -230,7 +265,7 @@ window.onload = function onload()
   mat4.translate(
     bunnyModelMatrix, 
     bunnyModelMatrix, 
-    [-20, Math.abs(bunnyBoundingBox[0][1]) * 2, 0]
+    [-10, Math.abs(bunnyBoundingBox[0][1]) * 2, 0]
   );
   mat4.rotateY(bunnyModelMatrix, bunnyModelMatrix, Math.PI / 2);
 

@@ -1,4 +1,10 @@
+// TODO (abiro) glslify can't seem to handle functions with user-defined return
+// types / arguments. Find a solution so that the code can be modularized.
+
 precision highp float;
+
+// TODO (abiro) make this configurable
+const int MAX_BOUNCES = 1;
 
 // Debugging colors
 const vec4 RED = vec4(1.0, 0.0, 0.0, 1.0);
@@ -14,7 +20,7 @@ struct FBO {
 struct Fragment {
   vec4 color;
   bool isSpecular;
-  bool isValid; 
+  bool isValid;
   vec3 normal;
   vec3 viewPos;
 };
@@ -107,10 +113,8 @@ Fragment findNextHit(in FBO fbo,
       continue;
     }
     // TODO (abiro) rethink this
-    // Z values are negative in view space.
     else if (abs(nextViewSpacePos.z - nextFragment.viewPos.z) < STEP_SIZE)
     {
-      //nextFragment.color = vec4(0.3);
       return nextFragment;
     }
     // In this case, a closer object is blocking a possible hit from view.
@@ -118,7 +122,6 @@ Fragment findNextHit(in FBO fbo,
     // farther away? 
     else if (abs(nextFragment.viewPos.z) < abs(nextViewSpacePos.z))
     {
-      invalidFragment.color = vec4(0.5);
       return invalidFragment;
     }
   }
@@ -129,30 +132,87 @@ Fragment findNextHit(in FBO fbo,
   else
     invalidFragment.color = RED;*/
 
-  invalidFragment.color = vec4(0.75);
-
   return invalidFragment;
 }
 
 uniform mat4 uProjection;
 
-varying vec2 vTexCo;
-
 uniform FBO uFbo;
 
-Fragment 
+uniform sampler2D uFirstPassColorSampler;
+
+varying vec2 vTexCo;
+
+bool flag;
+bool currentFragmentIsValid;
+
+float 
+  cumulativeDistance,
+  weight;
+
+Fragment
   fragment,
   nextFragment;
+
+vec3
+  prevViewPosition,
+  reflectionsColor; 
 
 void main() 
 {
   fragment = getFragment(uFbo, vTexCo);
+  currentFragmentIsValid = fragment.isValid;
 
-  // 'prevViewPosition' is the origin in view space when finding the first hit.
-  nextFragment = findNextHit(uFbo, fragment, uProjection, vec3(0.0));
+  gl_FragColor = texture2D(uFirstPassColorSampler, vTexCo);
 
-  gl_FragColor = nextFragment.color;
+  cumulativeDistance = 0.0;
 
-  if (!fragment.isValid)
+  // The source of the incident ray is the origin at first.
+  prevViewPosition = vec3(0.0);
+
+  reflectionsColor = vec3(0.0);
+  
+  flag = false;
+
+  for (int i = 0; i < MAX_BOUNCES; i += 1)
+  {
+    if (!fragment.isSpecular)
+    {
+      break;
+    }
+
+    nextFragment = findNextHit(uFbo, fragment, uProjection, prevViewPosition);
+
+    if (!nextFragment.isValid)
+    {
+      break;
+    }
+
+    cumulativeDistance += distance(fragment.viewPos, nextFragment.viewPos);
+
+    // The intensity of light is inversely proportional to the square of the
+    // of the distance from its source.
+    // TODO (abiro) Need more realistic model for attenuation, factoring in
+    // reflections and materials.
+    weight = 1.0 / pow(cumulativeDistance, 2.0);
+    if (cumulativeDistance == 0.0)
+      flag = true;
+
+    // TODO (abiro) alpha?
+    reflectionsColor += nextFragment.color.rgb * weight;
+
+    prevViewPosition = fragment.viewPos;
+    fragment = nextFragment;
+  }
+
+  gl_FragColor += vec4(reflectionsColor, gl_FragColor.a);
+
+  /*if (flag)
+    gl_FragColor = RED;
+  else
+    gl_FragColor = GREEN;*/
+
+  // All code is exectued regardless whether it's in a branch or not.
+  if (!currentFragmentIsValid)
     discard;
 }
