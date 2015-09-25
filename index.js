@@ -7,7 +7,7 @@
 var _ = require('underscore');
 var boundingBox = require('vertices-bounding-box');
 var bunny = require('bunny');
-var createCanvasOrbitCamera = require('canvas-orbit-camera');
+var createCanvasOrbitCamera = require('./lib/controls.js');
 var createFBO = require("gl-fbo");
 var createTexture = require("gl-texture2d");
 var createViewAlignedSquare = require('../lib/view-aligned-square.js');
@@ -31,8 +31,6 @@ window.onload = function onload()
     WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
     OES_texture_float_extension = gl.getExtension('OES_texture_float'),
 
-    copy = initCopy(gl),
-
     // Color buffers are eye-space position, eye-space normal, diffuse color
     // and specular color, respectively. A value larger than 0 in the alpha
     // channels of the diffuse and specular colors means the appropriate
@@ -51,7 +49,7 @@ window.onload = function onload()
       [gl.drawingBufferWidth, gl.drawingBufferHeight]
     ),
 
-    camera = createCanvasOrbitCamera(canvas),
+    camera = createCanvasOrbitCamera(canvas, {pan: false}),
 
     // A simple directional light.
     lightWorldPosition = [0, 100, 100],
@@ -203,9 +201,6 @@ window.onload = function onload()
     ssr.uniforms.uProjection = projectionMatrix;
     viewAlignedSquareGeo.draw();
     viewAlignedSquareGeo.unbind();
-
-    // Copy to window buffer.
-    //copy(firstPassFbo.color[0], 0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
     window.requestAnimationFrame(drawObjects);
   }
