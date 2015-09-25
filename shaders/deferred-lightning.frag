@@ -59,7 +59,8 @@ void main()
 
   if (0.0 < specularColor.a)
   {
-    specularPower = blinnPhongSpec(lightDirection, viewDirection, normal, specularColor.a);
+    specularPower = blinnPhongSpec(lightDirection, viewDirection, 
+                                   normal, specularColor.a);
   }
   else
   {
