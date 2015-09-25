@@ -1,5 +1,4 @@
-module.exports = function (grunt) 
-{
+module.exports = function (grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
 
@@ -26,11 +25,11 @@ module.exports = function (grunt)
       }
     }
 
-  });
+  })
 
-  grunt.loadNpmTasks('grunt-browserify');
-  grunt.loadNpmTasks('grunt-standard');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
+  grunt.loadNpmTasks('grunt-browserify')
+  grunt.loadNpmTasks('grunt-standard')
+  grunt.loadNpmTasks('grunt-contrib-uglify')
 
-  grunt.registerTask('default', ['standard', 'browserify', 'uglify']);
-};
+  grunt.registerTask('default', ['standard', 'browserify', 'uglify'])
+}

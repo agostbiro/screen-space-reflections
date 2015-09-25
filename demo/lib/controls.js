@@ -20,11 +20,9 @@ var mp = require('mouse-position')
 var mb = require('mouse-pressed')
 var key = require('key-pressed')
 
-var panSpeed = 1
-
 module.exports = attachCamera
 
-function attachCamera(canvas, opts) {
+function attachCamera (canvas, opts) {
   opts = opts || {}
   opts.pan = opts.pan !== false
   opts.scale = opts.scale !== false
@@ -34,7 +32,7 @@ function attachCamera(canvas, opts) {
   var mbut = mb(canvas, opts.rotate)
   var mpos = mp(canvas)
   var camera = createCamera(
-      [0, -40, 40]
+    [0, -40, 40]
     , [0, 0, 0]
     , [0, 1, 0]
   )
@@ -43,7 +41,7 @@ function attachCamera(canvas, opts) {
 
   return camera
 
-  function tick() {
+  function tick () {
     var ctrl = key('<control>') || key('<alt>')
     var alt = key('<shift>')
     var height = canvas.height
@@ -51,7 +49,7 @@ function attachCamera(canvas, opts) {
 
     if (opts.rotate && mbut.left && !ctrl && !alt) {
       camera.rotate(
-          [ mpos.x / width - 0.5, mpos.y / height - 0.5 ]
+        [ mpos.x / width - 0.5, mpos.y / height - 0.5 ]
         , [ mpos.prevX / width - 0.5, mpos.prevY / height - 0.5 ]
       )
     }
@@ -62,12 +60,12 @@ function attachCamera(canvas, opts) {
 
     if (opts.scale && (mbut.middle || (mbut.left && !ctrl && alt))) {
       var d = mpos.y - mpos.prevY
-      if (!d) return;
+      if (!d) return
 
       camera.distance *= Math.exp(d / height)
     }
 
-    camera.distance = Math.min(camera.distance, 60);
+    camera.distance = Math.min(camera.distance, 60)
 
     scroll.flush()
     mpos.flush()
