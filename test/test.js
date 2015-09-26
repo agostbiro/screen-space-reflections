@@ -167,7 +167,7 @@ config.testCases.forEach(function iteratee (testCase, i) {
   });*/
 
   if (!elementsEqual(normalizedPixel, lastPoint.color)) {
-    console.error('Test case ' + i + ' has failed.')
+    console.error('Test case ' + (i + 1) + ' has failed.')
     console.error(
       firstPoint.windowCoord[0], firstPoint.windowCoord[1],
       normalizedPixel, firstPoint.color, lastPoint.color

@@ -61,7 +61,7 @@ window.onload = function onload () {
     floorTexture = createTexture(gl, document.getElementById('floor-texture')),
 
     // TODO (abiro) Floor is too shiny, use more advanced material model.
-    // floorShininess = 20,
+    floorShininess = 20,
     floorSpecularColor = [0.8, 0.8, 0.8],
     teaPotSpecularColor = [0.9, 0.9, 0.9],
     teaPotShininess = 1,
@@ -138,15 +138,15 @@ window.onload = function onload () {
     bunnyShader.uniforms.uProjection = projectionMatrix
     bunnyShader.uniforms.uShininess = 0
     bunnyShader.uniforms.uUseDiffuseLightning = 1
-    // bunnyGeo.draw()
+    bunnyGeo.draw()
     bunnyGeo.unbind()
 
     floorGeo.bind(floorShader)
     floorShader.uniforms.uModel = floorModelMatrix
     floorShader.uniforms.uView = viewMatrix
     floorShader.uniforms.uProjection = projectionMatrix
-    // floorShader.uniforms.uShininess = floorShininess
-    floorShader.uniforms.uShininess = 0
+    floorShader.uniforms.uShininess = floorShininess
+    //floorShader.uniforms.uShininess = 0
     floorShader.uniforms.uSpecularColor = floorSpecularColor
     floorShader.uniforms.uTexture = floorTexture.bind()
     floorShader.uniforms.uUseDiffuseLightning = 1
@@ -187,10 +187,10 @@ window.onload = function onload () {
     ssr.uniforms.uFbo = {
       viewPosSampler: deferredShadingFbo.color[0].bind(0),
       normalSampler: deferredShadingFbo.color[1].bind(1),
-      colorSampler: deferredShadingFbo.color[2].bind(2),
+      colorSampler: firstPassFbo.color[0].bind(2),
       isSpecularSampler: deferredShadingFbo.color[3].bind(3)
     }
-    ssr.uniforms.uFirstPassColorSampler = firstPassFbo.color[0].bind(4)
+    //ssr.uniforms.uFirstPassColorSampler = firstPassFbo.color[0].bind(4)
     ssr.uniforms.uProjection = projectionMatrix
     viewAlignedSquareGeo.draw()
     viewAlignedSquareGeo.unbind()

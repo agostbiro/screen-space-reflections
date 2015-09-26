@@ -32,6 +32,10 @@ config.testCases = [
     point([0, 0, -2 * Math.sqrt(3)], [0, 0, -1], [0, 0, 1, 1], false)
   ),
   testCase(
+    point([-1, 0, -Math.sqrt(3)], [1, 0, 0], [0, 0, 0, 1], true),
+    point([0, 0, -2 * Math.sqrt(3) + 0.01], [0, 0, -1], [0, 1, 1, 1], false)
+  ),
+  testCase(
     point([0, 0, -4], [-Math.sqrt(2) / 2, 0, Math.sqrt(2) / 2], [0, 0, 0, 1], true),
     point([-1, 0, -4], [1, 0, 0], [0, 0, 1, 1], false)
   )

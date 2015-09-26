@@ -70,8 +70,8 @@ Fragment findNextHit(in FBO fbo,
                      in vec3 prevViewPosition)
 {
   // TODO (abiro) Make these configurable.
-  const int MAX_ITERATIONS = 10;
-  const float STEP_SIZE = 1.0;
+  const int MAX_ITERATIONS = 20;
+  const float STEP_SIZE = 0.5;
 
   Fragment 
     invalidFragment, 
@@ -113,7 +113,9 @@ Fragment findNextHit(in FBO fbo,
       continue;
     }
     // TODO (abiro) rethink this
-    else if (abs(nextViewSpacePos.z - nextFragment.viewPos.z) < STEP_SIZE)
+    // Z values are negative in view space, so 'nextViewSpacePos.z' is farther
+    // away from the origin than 'nextFragment.viewPos.z'.
+    if (nextViewSpacePos.z <= nextFragment.viewPos.z)
     {
       return nextFragment;
     }
@@ -139,7 +141,7 @@ uniform mat4 uProjection;
 
 uniform FBO uFbo;
 
-uniform sampler2D uFirstPassColorSampler;
+//uniform sampler2D uFirstPassColorSampler;
 
 varying vec2 vTexCo;
 
@@ -163,7 +165,7 @@ void main()
   fragment = getFragment(uFbo, vTexCo);
   currentFragmentIsValid = fragment.isValid;
 
-  gl_FragColor = texture2D(uFirstPassColorSampler, vTexCo);
+  gl_FragColor = fragment.color;
 
   cumulativeDistance = 0.0;
 
@@ -194,9 +196,10 @@ void main()
     // of the distance from its source.
     // TODO (abiro) Need more realistic model for attenuation, factoring in
     // reflections and materials.
-    weight = 1.0 / pow(cumulativeDistance, 2.0);
-    if (cumulativeDistance == 0.0)
-      flag = true;
+    //weight = 1.0 / pow(cumulativeDistance, 2.0);
+    weight = 1.0 / cumulativeDistance;
+    //if (cumulativeDistance == 0.0)
+      //flag = true;
 
     // TODO (abiro) alpha?
     reflectionsColor += nextFragment.color.rgb * weight;
@@ -205,7 +208,7 @@ void main()
     fragment = nextFragment;
   }
 
-  gl_FragColor += vec4(reflectionsColor, gl_FragColor.a);
+  gl_FragColor += vec4(reflectionsColor, 0.0);
 
   /*if (flag)
     gl_FragColor = RED;

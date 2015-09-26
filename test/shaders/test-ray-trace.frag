@@ -107,8 +107,9 @@ Fragment findNextHit(in FBO fbo,
       continue;
     }
     // TODO (abiro) rethink this
-    // Z values are negative in view space.
-    else if (abs(nextViewSpacePos.z - nextFragment.viewPos.z) < STEP_SIZE)
+    // Z values are negative in view space, so 'nextViewSpacePos.z' is farther
+    // away from the origin than 'nextFragment.viewPos.z'.
+    if (nextViewSpacePos.z <= nextFragment.viewPos.z)
     {
       //nextFragment.color = vec4(0.3);
       return nextFragment;
@@ -123,11 +124,12 @@ Fragment findNextHit(in FBO fbo,
     }
   }
 
-  /*if (isClose(nextFragment.viewPos.z - nextViewSpacePos.z, 0.0))
-  //if (nextViewSpacePos.z > -4.12 )
+  //if (isClose(nextFragment.viewPos.z - nextViewSpacePos.z, 0.0))
+  /*if (nextViewSpacePos.z < 0.0)
     invalidFragment.color = GREEN;
   else
-    invalidFragment.color = RED;*/
+    invalidFragment.color = RED;
+  */
 
   invalidFragment.color = vec4(0.75);
 
