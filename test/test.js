@@ -12,7 +12,13 @@ var mat4 = require('gl-mat4')
 function elementsEqual (array1, array2) {
   return array1.length === array2.length &&
   _.every(_.zip(array1, array2), function predicate (el) {
-    return el[0] === el[1]
+    
+    // Avoid divison by 0.
+    el[0] += 1;
+    el[1] += 1;
+
+    // Floating point numbers aren't precise.
+    return Math.abs(el[0] / el[1] - 1) < 0.001;
   })
 }
 
@@ -122,6 +128,7 @@ config.testCases.forEach(function iteratee (testCase, i) {
     colorSampler: deferredShadingFbo.color[0].bind(0),
     viewPosSampler: deferredShadingFbo.color[1].bind(1),
     normalSampler: deferredShadingFbo.color[2].bind(2),
+    size: [gl.drawingBufferWidth, gl.drawingBufferHeight],
     isSpecularSampler: deferredShadingFbo.color[3].bind(3)
   }
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)

@@ -27,7 +27,7 @@ void main()
   vViewPos = aPos;
 
   // TODO (abiro) rethink this and make it configurable
-  gl_PointSize = 10.0;
+  gl_PointSize = 4.0;
 
   gl_Position = uProjection * vec4(aPos, 1.0);
 }

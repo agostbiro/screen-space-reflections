@@ -8,6 +8,7 @@ struct FBO {
   sampler2D colorSampler;
   sampler2D isSpecularSampler;
   sampler2D normalSampler;
+  vec2 size;
   sampler2D viewPosSampler;
 };
 
@@ -16,15 +17,41 @@ struct Fragment {
   bool isSpecular;
   bool isValid; 
   vec3 normal;
+  float reciprocalZ;
+  vec2 texCo;
   vec3 viewPos;
 };
 
-bool isClose(float a, float b)
+float lerp(in float x, in float y, in float a)
+{
+  return (1.0 - a) * x + a * y;
+}
+
+bool isClose(in float a, in float b)
 {
   if (abs(a - b) < 0.01)
     return true;
   else
     return false;
+}
+
+vec2 screenSpaceToTexco(in vec2 screensPaceCoord, in vec2 bufferSize)
+{
+  return (screensPaceCoord + bufferSize * 0.5) / bufferSize;
+}
+
+// Screen space is a space here where integer coordinates correspond to pixels
+// with origin in the middle.
+// TODO (abiro) to which part of a pixel does the integer coordinate correspond
+// to?
+vec2 toScreenSpaceCoord(in vec2 normalizedDeviceCoord, in vec2 bufferSize)
+{
+  return bufferSize * 0.5 * normalizedDeviceCoord;
+}
+
+vec2 toNormalizedDeviceCoord(in vec2 texCo)
+{
+  return (texCo - 0.5) * 2.0;
 }
 
 vec2 toTexCo(in vec2 normalizedDeviceCoord)
@@ -54,85 +81,129 @@ Fragment getFragment(in FBO fbo, in vec2 texCo)
   viewPos = pos.xyz;
   isValid = pos.w == 1.0 ? true : false;
 
-  return Fragment(color, isSpecular, isValid, normal, viewPos);
+  return Fragment(color, isSpecular, isValid, normal, 
+                  1.0 / pos.z, texCo, viewPos);
 }
 
-// TODO (abiro) test if hit faces the reflected ray
+// TODO (abiro) Test if hit faces the reflected ray
+// TODO (abiro) Make sure textures are clamped to edge.
 Fragment findNextHit(in FBO fbo,
                      in Fragment fragment, 
                      in mat4 projectionMatrix,
                      in vec3 prevViewPosition)
 {
-  // TODO (abiro) Make these configurable.
-  const int MAX_ITERATIONS = 10;
-  const float STEP_SIZE = 1.0;
+  // TODO (abiro) Make it configurable.
+  const float MAX_ITERATIONS = 256.0;
 
   Fragment 
     invalidFragment, 
     nextFragment;
 
-  vec2 nextTexCo;
+  float
+    nextPosReciprocalZ,
+    stepRatio,
+    targetPosReciprocalZ,
+    startingPosReciprocalZ;
+
+  vec2
+    nextPos,
+    searchDirection,
+    searchDirUnitLen,
+    startingPos,
+    targetPos;
 
   vec3
     incidentRay,
-    nextNormDevCoord,
-    nextViewSpacePos,
     reflectedRay;
 
-  vec4 nextClipCoord;
+  vec4 
+    fragmentClipCoord,
+    targetClipCoord;
 
   // Returned to indicate no hit.
-  invalidFragment = Fragment(vec4(0.0), false, false, vec3(0.0), vec3(0.0));
+  invalidFragment = Fragment(vec4(0.0), false, false, vec3(0.0), 
+                             0.0, vec2(0.0), vec3(0.0));
 
   incidentRay = normalize(fragment.viewPos - prevViewPosition);
   reflectedRay = reflect(incidentRay, normalize(fragment.normal));
+  targetClipCoord = projectionMatrix * vec4(fragment.viewPos + reflectedRay, 1.0);
+  fragmentClipCoord = projectionMatrix * vec4(fragment.viewPos, 1.0);
 
-  for (int i = 1; i <= MAX_ITERATIONS; i += 1)
+  // Screen space is a space here where integer coordinates correspond to pixels
+  // with origin in the middle.
+  // TODO (abiro) to which part of a pixel does the integer coordinate 
+  // correspond to?
+  startingPos = toScreenSpaceCoord(fragmentClipCoord.xy / fragmentClipCoord.w,
+                                   fbo.size);
+
+  // Using reciprocals allows linear interpolation in screen space.
+  // Making depth comparisons in clip space to avoid having to convert to
+  // view space from clip.
+  startingPosReciprocalZ = 1.0 / fragmentClipCoord.z;
+
+  targetPos = toScreenSpaceCoord(targetClipCoord.xy / targetClipCoord.w, 
+                                 fbo.size);
+
+  targetPosReciprocalZ = 1.0 / targetClipCoord.z;
+
+  searchDirection = targetPos - startingPos;
+
+  // TODO (abiro) This doesn't guarantee that all pixels are visited along the
+  // path. Use DDA.
+  searchDirUnitLen = normalize(searchDirection);
+
+  stepRatio = 1.0 / length(searchDirection);
+
+  // Kill rays in the camera direction, because they are likely to be blocked
+  // by closer objects or not hit anything yet fall victim to false positives.
+  if (reflectedRay.z > 0.0)
   {
-    // Find the next position to test for a hit along the reflected ray.
-    nextViewSpacePos = fragment.viewPos + float(i) * STEP_SIZE * reflectedRay;
+    invalidFragment.color = vec4(0.25);
+    return invalidFragment;
+  }
 
-    nextClipCoord = projectionMatrix * vec4(nextViewSpacePos, 1.0);
+  // TODO (abiro) i = 4
+  for (float i = 4.0; i <= MAX_ITERATIONS; i += 1.0)
+  {
+    // Find the next position in screen space to test for a hit along the 
+    // reflected ray.
+    nextPos = startingPos + i * searchDirUnitLen;
 
-    nextTexCo = toTexCo(vec2(nextClipCoord.x / nextClipCoord.w, 
-                             nextClipCoord.y / nextClipCoord.w));
+    // Find the z value at the next position to test in view space. 
+    nextPosReciprocalZ = mix(startingPosReciprocalZ, 
+                             targetPosReciprocalZ, 
+                             i * stepRatio);
 
-    // Get the fragment from the framebuffer to which a point from
-    // 'nextViewSpacePos' would be reflected to, and then see if such a point
-    // actually exists.
-    nextFragment = getFragment(fbo, nextTexCo);
+    // Get the fragment from the framebuffer that could be reflected to the 
+    // current fragment and see if it is actually reflected there.
+    nextFragment = getFragment(fbo, screenSpaceToTexco(nextPos, fbo.size));
 
     if (!nextFragment.isValid)
     {
       continue;
     }
-    // TODO (abiro) rethink this
-    // Z values are negative in view space, so 'nextViewSpacePos.z' is farther
-    // away from the origin than 'nextFragment.viewPos.z'.
-    if (nextViewSpacePos.z <= nextFragment.viewPos.z)
+
+    // Test if the ray is behind the object.
+    // Z values are negative in clip space, but the reciprocal switches 
+    // relations.
+    if (nextPosReciprocalZ >= nextFragment.reciprocalZ)
     {
-      //nextFragment.color = vec4(0.3);
-      return nextFragment;
-    }
-    // In this case, a closer object is blocking a possible hit from view.
-    // TODO (abiro) What if there is a visible object along the reflected ray
-    // farther away? 
-    else if (abs(nextFragment.viewPos.z) < abs(nextViewSpacePos.z))
-    {
-      invalidFragment.color = vec4(0.5);
-      return invalidFragment;
+      // In this case, a closer object is blocking a possible hit from view.
+      // TODO (abiro) What if there is a visible object along the reflected ray
+      // farther away? 
+      if (nextPosReciprocalZ / nextFragment.reciprocalZ > 0.75)
+      {
+        invalidFragment.color = vec4(0.5);
+        return invalidFragment;
+      }
+      else
+      {
+        return nextFragment;
+      }
     }
   }
 
-  //if (isClose(nextFragment.viewPos.z - nextViewSpacePos.z, 0.0))
-  /*if (nextViewSpacePos.z < 0.0)
-    invalidFragment.color = GREEN;
-  else
-    invalidFragment.color = RED;
-  */
-
   invalidFragment.color = vec4(0.75);
-
   return invalidFragment;
 }
 
@@ -142,7 +213,7 @@ varying vec2 vTexCo;
 
 uniform FBO uFbo;
 
-Fragment 
+Fragment
   fragment,
   nextFragment;
 
