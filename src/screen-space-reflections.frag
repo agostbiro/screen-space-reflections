@@ -16,8 +16,6 @@ uniform FBO uFbo;
 
 varying vec2 vTexCo;
 
-bool currentFragmentIsValid;
-
 float 
   cumulativeDistance,
   weight;
@@ -33,17 +31,18 @@ vec3
 void main() 
 {
   fragment = getFragment(uFbo, vTexCo);
-  currentFragmentIsValid = fragment.isValid;
+
+  // All code is exectued regardless whether it's in a branch or not, so the
+  // rest of the code will still execute.
+  if (!fragment.isValid)
+    discard;
 
   gl_FragColor = fragment.color;
-  //gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-
-  cumulativeDistance = 0.0;
 
   // The source of the incident ray is the origin at first.
   prevViewPosition = vec3(0.0);
-
   reflectionsColor = vec3(0.0);
+  cumulativeDistance = 0.0;
   
   for (int i = 0; i < MAX_BOUNCES; i += 1)
   {
@@ -56,7 +55,6 @@ void main()
 
     if (!nextFragment.isValid)
     {
-      //gl_FragColor.rgb += nextFragment.color.rgb;
       break;
     }
 
@@ -64,31 +62,15 @@ void main()
 
     // The intensity of light is inversely proportional to the square of the
     // of the distance from its source.
-    // TODO (abiro) Need more realistic model for attenuation, factoring in
-    // reflections and materials.
+    // TODO (abiro) Need more realistic model for the reflection of different 
+    // materials.
     //weight = 1.0 / pow(cumulativeDistance, 2.0);
     weight = 1.0 / cumulativeDistance;
-    //weight = 1.0;
 
     // TODO (abiro) alpha?
-    //reflectionsColor += nextFragment.color.rgb * weight;
     gl_FragColor.rgb += nextFragment.color.rgb * weight;
-    //gl_FragColor.a = 1.0;
 
     prevViewPosition = fragment.viewPos;
     fragment = nextFragment;
   }
-
-  //gl_FragColor += vec4(reflectionsColor, 0.0);
-  //gl_FragColor = fragment.color;
-  //gl_FragColor.a = 1.0;
-
-  /*if (dot(fragment.normal, vec3(0.0, 1.0, 0.0)) > 0.0)
-    gl_FragColor.g = 1.0;
-  else
-    gl_FragColor.r = 1.0;*/
-
-  // All code is exectued regardless whether it's in a branch or not.
-  if (!currentFragmentIsValid)
-    discard;
 }
