@@ -7,6 +7,11 @@
       "glslify"
     ]
   },
+  "glslify": {
+    "transform": [
+      "glslify-import"
+    ]
+  },
   "scripts": {
     "start": "watchify ./demo/index.js -o ./demo/bundle.js --delay 400 -v -d & http-server ./demo -p 8001 -o",
     "test": "watchify ./test/test.js -o ./test/bundle.js --delay 400 -v -d & http-server ./test -p 8002 -o"
@@ -27,6 +32,7 @@
     "glsl-specular-blinn-phong": "^1.0.0",
     "glsl-transpose": "^1.0.0",
     "glslify": "^2.2.1",
+    "glslify-import": "^1.0.0",
     "key-pressed": "0.0.1",
     "mouse-position": "^1.0.0",
     "mouse-pressed": "0.0.1",
