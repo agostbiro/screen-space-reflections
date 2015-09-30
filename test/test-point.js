@@ -4,6 +4,19 @@ var _ = require('underscore')
 var mat4 = require('gl-mat4')
 var vec3 = require('gl-vec3')
 
+// TODO (abiro) use check lib
+function checkType(value, type)
+{
+  if (typeof value !== type)
+    throw new Error('Expected ' + value + ' to be type ' + type);
+}
+
+function checkVal(value, expected)
+{
+  if (value !== expected)
+    throw new Error('Expected ' + value + ' to be ' + expected);
+}
+
 module.exports = function initTestPoint (config) {
   var halfWidth = config.width / 2,
     halfHeight = config.height / 2,
@@ -17,7 +30,7 @@ module.exports = function initTestPoint (config) {
     config.far
   )
 
-  return function testPoint (position, normal, color, isSpecular) {
+  return function testPoint (position, size, normal, color, isSpecular) {
     var clipCoord = vec3.create(),
 
       ndc,
@@ -25,6 +38,12 @@ module.exports = function initTestPoint (config) {
       yw,
       w,
       windowCoord
+
+    checkVal(position.length, 3);
+    checkType(size, 'number');
+    checkVal(normal.length, 3);
+    checkVal(color.length, 4);
+    checkType(isSpecular, 'boolean');
 
     vec3.transformMat4(clipCoord, position, projectionMatrix)
 
@@ -53,6 +72,7 @@ module.exports = function initTestPoint (config) {
       isSpecular: isSpecular ? 1 : 0,
       normal: normal,
       pos: position,
+      size: size,
       windowCoord: windowCoord
     }
   }

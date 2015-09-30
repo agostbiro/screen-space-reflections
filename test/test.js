@@ -85,6 +85,7 @@ config.testCases.forEach(function iteratee (testCase, i) {
 
     colorBuffer,
     normalsBuffer,
+    pointSizeBuffer,
     positionsBuffer,
     isSpecularBuffer,
     firstPoint,
@@ -93,6 +94,7 @@ config.testCases.forEach(function iteratee (testCase, i) {
 
   colorBuffer = createBuffer(gl, testCase.attributes.color)
   normalsBuffer = createBuffer(gl, testCase.attributes.normal)
+  pointSizeBuffer = createBuffer(gl, testCase.attributes.size)
   positionsBuffer = createBuffer(gl, testCase.attributes.pos)
   isSpecularBuffer = createBuffer(gl, testCase.attributes.isSpecular)
 
@@ -105,6 +107,9 @@ config.testCases.forEach(function iteratee (testCase, i) {
 
   normalsBuffer.bind()
   cacheForDeferredShader.attributes.aNormal.pointer()
+
+  pointSizeBuffer.bind()
+  cacheForDeferredShader.attributes.aPointSize.pointer()
 
   positionsBuffer.bind()
   cacheForDeferredShader.attributes.aPos.pointer()
@@ -184,6 +189,6 @@ config.testCases.forEach(function iteratee (testCase, i) {
   }
 })
 
-// canvas.style.border = "solid 1px"
-// document.body.appendChild(canvas)
-document.body.style.background = pass ? 'green' : 'red'
+ canvas.style.border = "solid 1px"
+ document.body.appendChild(canvas)
+//document.body.style.background = pass ? 'green' : 'red'

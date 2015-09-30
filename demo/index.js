@@ -27,13 +27,17 @@ window.onload = function onload () {
     WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
     OES_texture_float_extension = gl.getExtension('OES_texture_float'),
 
+    devicePixelRatio = window.devicePixelRatio || 1,
+    width = 512,
+    height = 512,
+
     // Color buffers are eye-space position, eye-space normal, diffuse color
     // and specular color, respectively. A value larger than 0 in the alpha
     // channels of the diffuse and specular colors means the appropriate
     // lightning model is used.
     deferredShadingFbo = createFBO(
       gl,
-      [gl.drawingBufferWidth, gl.drawingBufferHeight],
+      [width * devicePixelRatio, height * devicePixelRatio],
       {
         float: true,
         color: 4
@@ -42,7 +46,7 @@ window.onload = function onload () {
 
     firstPassFbo = createFBO(
       gl,
-      [gl.drawingBufferWidth, gl.drawingBufferHeight]
+      [width * devicePixelRatio, height * devicePixelRatio]
     ),
 
     camera = createCanvasOrbitCamera(canvas, {pan: false}),
@@ -185,9 +189,11 @@ window.onload = function onload () {
     ssr = screenSpaceReflectionsShader
     viewAlignedSquareGeo.bind(ssr)
     ssr.uniforms.uFbo = {
+      size: [gl.drawingBufferWidth, gl.drawingBufferHeight],
       viewPosSampler: deferredShadingFbo.color[0].bind(0),
       normalSampler: deferredShadingFbo.color[1].bind(1),
       colorSampler: firstPassFbo.color[0].bind(2),
+      //colorSampler: deferredShadingFbo.color[2].bind(2),
       isSpecularSampler: deferredShadingFbo.color[3].bind(3)
     }
     //ssr.uniforms.uFirstPassColorSampler = firstPassFbo.color[0].bind(4)
@@ -206,7 +212,14 @@ window.onload = function onload () {
     throw new Error('The OES_texture_float extension is unavailable.')
   }
 
-  window.addEventListener('resize', fitCanvas(canvas), false)
+  //window.addEventListener('resize', fitCanvas(canvas), false)
+
+  canvas.width = width * devicePixelRatio;
+  canvas.height = height * devicePixelRatio;
+
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  canvas.style.border = 'solid 1px';
 
   gl.enable(gl.DEPTH_TEST)
   gl.enable(gl.CULL_FACE)
@@ -255,7 +268,7 @@ window.onload = function onload () {
   mat4.translate(
     bunnyModelMatrix,
     bunnyModelMatrix,
-    [-10, Math.abs(bunnyBoundingBox[0][1]) * 2, 0]
+    [-10, Math.abs(bunnyBoundingBox[0][1]) * 2, -10]
   )
   mat4.rotateY(bunnyModelMatrix, bunnyModelMatrix, Math.PI / 2)
 

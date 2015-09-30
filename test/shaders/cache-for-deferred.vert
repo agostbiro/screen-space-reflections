@@ -1,6 +1,8 @@
 precision highp float;
 
-attribute float aIsSpecular;
+attribute float 
+  aIsSpecular,
+  aPointSize;
 attribute vec3 
   aNormal, 
   aPos;
@@ -26,8 +28,8 @@ void main()
 
   vViewPos = aPos;
 
-  // TODO (abiro) rethink this and make it configurable
-  gl_PointSize = 4.0;
+  gl_PointSize = aPointSize;
+  //gl_PointSize = 4.0;
 
   gl_Position = uProjection * vec4(aPos, 1.0);
 }

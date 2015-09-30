@@ -93,17 +93,25 @@ Fragment findNextHit(in FBO fbo,
                      in vec3 prevViewPosition)
 {
   // TODO (abiro) Make it configurable.
-  const float MAX_ITERATIONS = 256.0;
+  const float 
+    MAX_ITERATIONS = 10.0,
+    STRIDE = 16.0,
+    SEARCH_STEPS = -3.0;
 
-  Fragment 
-    invalidFragment, 
-    nextFragment;
+  bool coarseHit;
 
   float
     nextPosReciprocalZ,
-    stepRatio,
     targetPosReciprocalZ,
-    startingPosReciprocalZ;
+    startingPosReciprocalZ,
+    steps,
+    stepRatio,
+    stepsBack;
+
+  Fragment 
+    invalidFragment, 
+    nextFragment,
+    prevFragment;
 
   vec2
     nextPos,
@@ -155,7 +163,7 @@ Fragment findNextHit(in FBO fbo,
   stepRatio = 1.0 / length(searchDirection);
 
   // Kill rays in the camera direction, because they are likely to be blocked
-  // by closer objects or not hit anything yet fall victim to false positives.
+  // by closer objects, or not hit anything, but signal false positives.
   if (reflectedRay.z > 0.0)
   {
     invalidFragment.color = vec4(0.25);
@@ -163,21 +171,24 @@ Fragment findNextHit(in FBO fbo,
   }
 
   // TODO (abiro) i = 4
-  for (float i = 4.0; i <= MAX_ITERATIONS; i += 1.0)
+  for (float i = 1.0; i <= MAX_ITERATIONS; i += 1.0)
   {
+    steps = i * STRIDE;
+
     // Find the next position in screen space to test for a hit along the 
     // reflected ray.
-    nextPos = startingPos + i * searchDirUnitLen;
+    nextPos = startingPos + steps * searchDirUnitLen;
 
     // Find the z value at the next position to test in view space. 
     nextPosReciprocalZ = mix(startingPosReciprocalZ, 
                              targetPosReciprocalZ, 
-                             i * stepRatio);
+                             steps * stepRatio);
 
     // Get the fragment from the framebuffer that could be reflected to the 
     // current fragment and see if it is actually reflected there.
     nextFragment = getFragment(fbo, screenSpaceToTexco(nextPos, fbo.size));
 
+    // TODO (abiro) rethink this
     if (!nextFragment.isValid)
     {
       continue;
@@ -198,13 +209,57 @@ Fragment findNextHit(in FBO fbo,
       }
       else
       {
-        return nextFragment;
+        coarseHit = true;
+        break;
       }
     }
   }
 
-  invalidFragment.color = vec4(0.75);
-  return invalidFragment;
+  if (!coarseHit)
+  {
+    invalidFragment.color = vec4(0.75);
+    return invalidFragment;
+  }
+
+  // Refine the match by binary search. If the ray is behind the current
+  // fragment's position, take a half-stride long step back and reexamine
+  // the depth buffer. Then, taking smaller and smaller steps recursively
+  // find the closest hit for the ray.
+  for (float j = SEARCH_STEPS; j >= 0.0; j -= 1.0)
+  {
+    if (nextPosReciprocalZ > nextFragment.reciprocalZ)
+    {
+      stepsBack = -pow(2.0, j);
+    }
+    else if (nextPosReciprocalZ < nextFragment.reciprocalZ)
+    {
+      stepsBack = pow(2.0, j);
+    }
+    else
+    {
+      break;
+    }
+
+    steps = steps + stepsBack;
+
+    nextPos = startingPos + steps * searchDirUnitLen;
+
+    nextPosReciprocalZ = mix(startingPosReciprocalZ, 
+                             targetPosReciprocalZ, 
+                             steps * stepRatio);
+
+    prevFragment = nextFragment;
+    nextFragment = getFragment(fbo, screenSpaceToTexco(nextPos, fbo.size));
+
+    // TODO (abiro) rethink this;
+    if (!nextFragment.isValid)
+    {
+      nextFragment = prevFragment;
+      break;
+    }
+  }
+
+  return nextFragment;
 }
 
 uniform mat4 uProjection;
