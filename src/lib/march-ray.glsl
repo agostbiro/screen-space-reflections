@@ -100,8 +100,7 @@ Fragment marchRay(in FBO fbo,
     // TODO (abiro) rethink this
     if (!nextFragment.isValid)
     {
-      //if (testFrag.isValid != nextFragment.isValid)
-        //invalidFragment.color = vec4(0.0, 1.0, 0.0, 1.0);
+      invalidFragment.color = vec4(0.0, 1.0, 0.0, 1.0);
       return invalidFragment;
     }
 
@@ -123,19 +122,14 @@ Fragment marchRay(in FBO fbo,
     // relations.
     if (nextPosReciprocalZ >= nextFragment.reciprocalZ && sameDir && canReflect)
     {
-      // In this case, a closer object is blocking a possible hit from view.
-      // TODO (abiro) What if there is a visible object along the reflected ray
-      // farther away? 
-      if (nextPosReciprocalZ / nextFragment.reciprocalZ > 0.75)
-      {
-        invalidFragment.color = vec4(0.0, 0.0, 1.0, 1.0);
-        return invalidFragment;
-      }
-      else
-      {
-        coarseHit = true;
-        break;
-      }
+      coarseHit = true;
+      break;
+    }
+    // In this case, a closer object is blocking a possible hit from view.
+    else if (sameDir && canReflect)
+    {
+      invalidFragment.color = vec4(0.0, 0.0, 1.0, 1.0);
+      return invalidFragment;
     }
   }
 
