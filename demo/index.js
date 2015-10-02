@@ -11,7 +11,6 @@ var createFBO = require('gl-fbo')
 var createTexture = require('gl-texture2d')
 var createViewAlignedSquare = require('../lib/view-aligned-square.js')
 var datGui = require('dat-gui')
-var fitCanvas = require('canvas-fit')
 var floor = require('./lib/floor.js')
 var getContext = require('webgl-context')
 var glGeometry = require('gl-geometry')
@@ -112,11 +111,9 @@ window.onload = function onload () {
     bunnyBoundingBox,
     teapotBoundingBox
 
-  function hexRGBNormalize(hex)
-  {
-    return hexRgb(hex).map(function iteratee(el)
-    {
-      return el / 255;
+  function hexRGBNormalize (hex) {
+    return hexRgb(hex).map(function iteratee (el) {
+      return el / 255
     })
   }
 
@@ -143,7 +140,7 @@ window.onload = function onload () {
     )
 
     vec3.transformMat4(
-      lightViewPosition, 
+      lightViewPosition,
       [opts.lights.posX, opts.lights.posY, opts.lights.posZ],
       viewMatrix
     )
@@ -161,14 +158,13 @@ window.onload = function onload () {
     bunnyShader.uniforms.uUseDiffuseLightning = 1
 
     mat4.identity(modelMatrix)
-    bunnyPositions.forEach(function iteratee (pos, i)
-    {
+    bunnyPositions.forEach(function iteratee (pos, i) {
       mat4.translate(modelMatrix, bunnyModelMatrix, pos)
 
       mat4.rotateY(modelMatrix, modelMatrix, bunnyRotations[i])
 
       bunnyShader.uniforms.uModel = modelMatrix
-      
+
       bunnyGeo.draw()
     })
 
@@ -195,12 +191,9 @@ window.onload = function onload () {
     teapotGeo.draw()
     teapotGeo.unbind()
 
-    if (opts.reflectionsOn)
-    {
+    if (opts.reflectionsOn) {
       firstPassFbo.bind()
-    }
-    else
-    {
+    } else {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     }
     gl.clearColor(0.9, 0.95, 1, 1)
@@ -218,8 +211,7 @@ window.onload = function onload () {
     viewAlignedSquareGeo.draw()
     viewAlignedSquareGeo.unbind()
 
-    if (opts.reflectionsOn)
-    {
+    if (opts.reflectionsOn) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -249,12 +241,12 @@ window.onload = function onload () {
     throw new Error('The OES_texture_float extension is unavailable.')
   }
 
-  canvas.width = width * devicePixelRatio;
-  canvas.height = height * devicePixelRatio;
+  canvas.width = width * devicePixelRatio
+  canvas.height = height * devicePixelRatio
 
-  canvas.style.width = width + 'px';
-  canvas.style.height = height + 'px';
-  canvas.style.border = 'solid 1px';
+  canvas.style.width = width + 'px'
+  canvas.style.height = height + 'px'
+  canvas.style.border = 'solid 1px'
 
   gui.add(opts, 'emphasizeReflections')
   gui.add(opts, 'reflectionsOn')
@@ -262,7 +254,7 @@ window.onload = function onload () {
   guiFolders.floor = gui.addFolder('Floor')
   guiFolders.floor.add(opts.floor, 'shininess', 1, 50)
   guiFolders.floor.addColor(opts.floor, 'specularColor')
-  
+
   guiFolders.lights = gui.addFolder('Lights')
   guiFolders.lights.add(opts.lights, 'posX', -100, 100)
   guiFolders.lights.add(opts.lights, 'posY', 0, 100)

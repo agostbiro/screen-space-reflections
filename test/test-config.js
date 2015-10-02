@@ -54,13 +54,13 @@ config.testCases = [
     // 0.25 is the code for an invalid fragment facing the camera.
     point([0, 0, 1], targetSize, [1, 0, 0], [0.25, 0.25, 0.25, 0.25], false)
   ),
-  /*testCase(
-    point([0, 0, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
-    point([0.5, 0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
-    point([-0.5, 0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
-    point([0.5, -0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
-    point([-0.5, -0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true)
-  )*/
+/*testCase(
+  point([0, 0, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
+  point([0.5, 0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
+  point([-0.5, 0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
+  point([0.5, -0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true),
+  point([-0.5, -0.5, -1], 64, [0, 0, 0], [1, 0, 0, 1], true)
+)*/
 ]
 
 console.log(config)

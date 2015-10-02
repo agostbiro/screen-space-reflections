@@ -5,16 +5,14 @@ var mat4 = require('gl-mat4')
 var vec3 = require('gl-vec3')
 
 // TODO (abiro) use check lib
-function checkType(value, type)
-{
+function checkType (value, type) {
   if (typeof value !== type)
-    throw new Error('Expected ' + value + ' to be type ' + type);
+    throw new Error('Expected ' + value + ' to be type ' + type)
 }
 
-function checkVal(value, expected)
-{
+function checkVal (value, expected) {
   if (value !== expected)
-    throw new Error('Expected ' + value + ' to be ' + expected);
+    throw new Error('Expected ' + value + ' to be ' + expected)
 }
 
 module.exports = function initTestPoint (config) {
@@ -39,11 +37,11 @@ module.exports = function initTestPoint (config) {
       w,
       windowCoord
 
-    checkVal(position.length, 3);
-    checkType(size, 'number');
-    checkVal(normal.length, 3);
-    checkVal(color.length, 4);
-    checkType(isSpecular, 'boolean');
+    checkVal(position.length, 3)
+    checkType(size, 'number')
+    checkVal(normal.length, 3)
+    checkVal(color.length, 4)
+    checkType(isSpecular, 'boolean')
 
     vec3.transformMat4(clipCoord, position, projectionMatrix)
 

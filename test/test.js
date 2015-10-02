@@ -12,13 +12,12 @@ var mat4 = require('gl-mat4')
 function elementsEqual (array1, array2) {
   return array1.length === array2.length &&
   _.every(_.zip(array1, array2), function predicate (el) {
-    
     // Avoid divison by 0.
-    el[0] += 1;
-    el[1] += 1;
+    el[0] += 1
+    el[1] += 1
 
     // Floating point numbers aren't precise.
-    return Math.abs(el[0] / el[1] - 1) < 0.001;
+    return Math.abs(el[0] / el[1] - 1) < 0.001
   })
 }
 
@@ -189,6 +188,6 @@ config.testCases.forEach(function iteratee (testCase, i) {
   }
 })
 
- canvas.style.border = "solid 1px"
- document.body.appendChild(canvas)
-//document.body.style.background = pass ? 'green' : 'red'
+canvas.style.border = 'solid 1px'
+document.body.appendChild(canvas)
+// document.body.style.background = pass ? 'green' : 'red'
