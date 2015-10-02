@@ -65,7 +65,7 @@ function attachCamera (canvas, opts) {
       camera.distance *= Math.exp(d / height)
     }
 
-    camera.distance = Math.min(camera.distance, 60)
+    camera.distance = Math.min(camera.distance, 80)
 
     scroll.flush()
     mpos.flush()

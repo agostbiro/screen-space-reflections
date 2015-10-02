@@ -96,12 +96,20 @@ window.onload = function onload () {
       glslify('./shaders/cache-for-deferred.frag')
     ),
 
+    modelMatrix = mat4.create(),
     bunnyModelMatrix = mat4.create(),
     floorModelMatrix = mat4.create(),
     teapotModelMatrix = mat4.create(),
 
     projectionMatrix = mat4.create(),
     viewMatrix = mat4.create(),
+
+    bunnyPositions = [
+      [-10, 0, 0],
+      [10, 0, 0],
+      [0, 0, -15]
+    ],
+    bunnyRotations = [Math.PI / 2, -Math.PI / 2, 0],
 
     bunnyBoundingBox,
     teapotBoundingBox
@@ -137,12 +145,23 @@ window.onload = function onload () {
 
     bunnyGeo.bind(bunnyShader)
     bunnyShader.uniforms.uDiffuseColor = bunnyDiffuseColor
-    bunnyShader.uniforms.uModel = bunnyModelMatrix
     bunnyShader.uniforms.uView = viewMatrix
     bunnyShader.uniforms.uProjection = projectionMatrix
     bunnyShader.uniforms.uShininess = 0
     bunnyShader.uniforms.uUseDiffuseLightning = 1
-    bunnyGeo.draw()
+
+    mat4.identity(modelMatrix)
+    bunnyPositions.forEach(function iteratee (pos, i)
+    {
+      mat4.translate(modelMatrix, bunnyModelMatrix, pos)
+
+      mat4.rotateY(modelMatrix, modelMatrix, bunnyRotations[i])
+
+      bunnyShader.uniforms.uModel = modelMatrix
+      
+      bunnyGeo.draw()
+    })
+
     bunnyGeo.unbind()
 
     floorGeo.bind(floorShader)
@@ -268,9 +287,8 @@ window.onload = function onload () {
   mat4.translate(
     bunnyModelMatrix,
     bunnyModelMatrix,
-    [-10, Math.abs(bunnyBoundingBox[0][1]) * 2, -10]
+    [0, Math.abs(bunnyBoundingBox[0][1]), 0]
   )
-  mat4.rotateY(bunnyModelMatrix, bunnyModelMatrix, Math.PI / 2)
 
   mat4.translate(
     teapotModelMatrix,
