@@ -9,9 +9,14 @@ Fragment marchRay(in FBO fbo,
     MAX_STRIDE = 16.0,
     SEARCH_STEPS = 3.0;
 
+  const vec3 
+    CAMERA_DIR = vec3(0.0, 0.0, 1.0),
+    DOWN_DIR = vec3(0.0, -1.0, 0.0);
+
   bool
     canReflect,
     coarseHit,
+    isDownFacing,
     sameDir;
 
   float
@@ -50,10 +55,21 @@ Fragment marchRay(in FBO fbo,
 
   incidentRay = normalize(fragment.viewPos - prevViewPosition);
   reflectedRay = reflect(incidentRay, fragment.normal);
+
+  // Reflections toward the camera would fail on the depth test and cause other
+  // complications (hit out of frame objects or encounter occluders).
+  if (dot(reflectedRay, CAMERA_DIR) > 0.0)
+  {
+    invalidFragment.color = vec4(1.0, 0.0, 1.0, 1.0);
+    return invalidFragment;
+  }
+
   targetClipCoord = projectionMatrix * vec4(fragment.viewPos + reflectedRay, 1.0);
   fragmentClipCoord = projectionMatrix * vec4(fragment.viewPos, 1.0);
-
+  
   dotProductNormalReflRay = dot(fragment.normal, reflectedRay);
+  
+  isDownFacing = dot(fragment.normal, DOWN_DIR) > 0.0;
 
   // Screen space is a space here where integer coordinates correspond to pixels
   // with origin in the middle.
@@ -100,8 +116,7 @@ Fragment marchRay(in FBO fbo,
     // TODO (abiro) rethink this
     if (!nextFragment.isValid)
     {
-      invalidFragment.color = vec4(0.0, 1.0, 0.0, 1.0);
-      return invalidFragment;
+      return nextFragment;
     }
 
     // If the dot product of two vectors is negative, they are facing entirely
@@ -109,8 +124,9 @@ Fragment marchRay(in FBO fbo,
     canReflect = dot(reflectedRay, nextFragment.normal) < 0.0;
 
     // See if the point is along the ray.
-    sameDir = 0.99 <
-              dot(reflectedRay, 
+    // See commit message d2897ae on down-facing objects.
+    sameDir = (isDownFacing ? 0.5 : 0.99) <
+              dot(reflectedRay,
                   normalize(nextFragment.viewPos - fragment.viewPos));
 
     // TODO (abiro) Rethink this. 'nextPosReciprocalZ' is in clip space, while
@@ -120,7 +136,7 @@ Fragment marchRay(in FBO fbo,
     // Test if the ray is behind the object.
     // Z values are negative in clip space, but the reciprocal switches 
     // relations.
-    if (nextPosReciprocalZ >= nextFragment.reciprocalZ && sameDir && canReflect)
+    if (nextPosReciprocalZ >= nextFragment.reciprocalZ && canReflect && sameDir)
     {
       coarseHit = true;
       break;
@@ -158,10 +174,12 @@ Fragment marchRay(in FBO fbo,
 
     if (dotProductNormalReflRay < dotProductNormalNextReflRay)
     {
+      // Step back
       stepsBack = -pow(2.0, j);
     }
     else if (dotProductNormalReflRay > dotProductNormalNextReflRay)
     {
+      // Step forward
       stepsBack = pow(2.0, j);
     }
     else
@@ -173,14 +191,10 @@ Fragment marchRay(in FBO fbo,
 
     nextPos = startingPos + steps * searchDirUnitLen;
 
-    nextPosReciprocalZ = mix(startingPosReciprocalZ, 
-                             targetPosReciprocalZ, 
-                             steps * stepRatio);
-
     prevFragment = nextFragment;
     nextFragment = getFragment(fbo, screenSpaceToTexco(nextPos, fbo.size));
 
-    // TODO (abiro) rethink this;
+    // TODO (abiro) rethink this
     if (!nextFragment.isValid)
     {
       nextFragment = prevFragment;

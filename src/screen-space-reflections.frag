@@ -55,6 +55,7 @@ void main()
 
     if (!nextFragment.isValid)
     {
+      //gl_FragColor = nextFragment.color;
       break;
     }
 
