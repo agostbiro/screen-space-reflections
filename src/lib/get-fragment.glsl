@@ -33,5 +33,11 @@ Fragment getFragment(in FBO fbo, in vec2 texCo)
   viewPos = pos.xyz;
   isValid = pos.w == 1.0 ? true : false;
 
+  if (!isValid)
+  {
+    invalidFragment.color = vec4(0.0, 1.0, 1.0, 1.0);
+    return invalidFragment;
+  }
+
   return Fragment(color, isSpecular, isValid, normal, 1.0 / pos.z, viewPos);
 }

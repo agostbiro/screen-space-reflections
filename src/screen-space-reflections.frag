@@ -64,8 +64,7 @@ void main()
     // of the distance from its source.
     // TODO (abiro) Need more realistic model for the reflection of different 
     // materials.
-    //weight = 1.0 / pow(cumulativeDistance, 2.0);
-    weight = 1.0 / cumulativeDistance;
+    weight = (cumulativeDistance == 0.0) ? 0.0 : 1.0 / cumulativeDistance;
 
     // TODO (abiro) alpha?
     gl_FragColor.rgb += nextFragment.color.rgb * weight;
