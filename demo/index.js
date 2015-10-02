@@ -10,13 +10,16 @@ var createCanvasOrbitCamera = require('./lib/controls.js')
 var createFBO = require('gl-fbo')
 var createTexture = require('gl-texture2d')
 var createViewAlignedSquare = require('../lib/view-aligned-square.js')
+var datGui = require('dat-gui')
 var fitCanvas = require('canvas-fit')
 var floor = require('./lib/floor.js')
 var getContext = require('webgl-context')
 var glGeometry = require('gl-geometry')
 var glShader = require('gl-shader')
 var glslify = require('glslify')
+var hexRgb = require('hex-rgb')
 var normals = require('normals')
+var opts = require('./options.js')
 var mat4 = require('gl-mat4')
 var teapot = require('teapot')
 var vec3 = require('gl-vec3')
@@ -26,6 +29,9 @@ window.onload = function onload () {
     gl = getContext({canvas: canvas}),
     WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
     OES_texture_float_extension = gl.getExtension('OES_texture_float'),
+
+    gui = new datGui.GUI(),
+    guiFolders = {},
 
     devicePixelRatio = window.devicePixelRatio || 1,
     width = 512,
@@ -52,7 +58,6 @@ window.onload = function onload () {
     camera = createCanvasOrbitCamera(canvas, {pan: false}),
 
     // A simple directional light.
-    lightWorldPosition = [0, 100, 100],
     lightViewPosition = vec3.create(),
 
     bunnyGeo = glGeometry(gl),
@@ -60,15 +65,8 @@ window.onload = function onload () {
     teapotGeo = glGeometry(gl),
     viewAlignedSquareGeo = createViewAlignedSquare(gl, 'aPos', 'aTexCo'),
 
-    ambientLightColor = [0.33, 0.33, 0.33],
     bunnyDiffuseColor = [0.78, 0.41, 0.29],
     floorTexture = createTexture(gl, document.getElementById('floor-texture')),
-
-    // TODO (abiro) Floor is too shiny, use more advanced material model.
-    floorShininess = 20,
-    floorSpecularColor = [0.8, 0.8, 0.8],
-    teaPotSpecularColor = [0.9, 0.9, 0.9],
-    teaPotShininess = 1,
 
     bunnyShader = glShader(
       gl,
@@ -114,6 +112,14 @@ window.onload = function onload () {
     bunnyBoundingBox,
     teapotBoundingBox
 
+  function hexRGBNormalize(hex)
+  {
+    return hexRgb(hex).map(function iteratee(el)
+    {
+      return el / 255;
+    })
+  }
+
   function drawObjects () {
     var dls,
       ssr
@@ -136,7 +142,11 @@ window.onload = function onload () {
       300
     )
 
-    vec3.transformMat4(lightViewPosition, lightWorldPosition, viewMatrix)
+    vec3.transformMat4(
+      lightViewPosition, 
+      [opts.lights.posX, opts.lights.posY, opts.lights.posZ],
+      viewMatrix
+    )
 
     deferredShadingFbo.bind()
 
@@ -168,9 +178,8 @@ window.onload = function onload () {
     floorShader.uniforms.uModel = floorModelMatrix
     floorShader.uniforms.uView = viewMatrix
     floorShader.uniforms.uProjection = projectionMatrix
-    floorShader.uniforms.uShininess = floorShininess
-    //floorShader.uniforms.uShininess = 0
-    floorShader.uniforms.uSpecularColor = floorSpecularColor
+    floorShader.uniforms.uShininess = opts.floor.shininess,
+    floorShader.uniforms.uSpecularColor = hexRGBNormalize(opts.floor.specularColor),
     floorShader.uniforms.uTexture = floorTexture.bind()
     floorShader.uniforms.uUseDiffuseLightning = 1
     floorGeo.draw()
@@ -180,20 +189,27 @@ window.onload = function onload () {
     teapotShader.uniforms.uModel = teapotModelMatrix
     teapotShader.uniforms.uView = viewMatrix
     teapotShader.uniforms.uProjection = projectionMatrix
-    teapotShader.uniforms.uShininess = teaPotShininess
-    teapotShader.uniforms.uSpecularColor = teaPotSpecularColor
+    teapotShader.uniforms.uShininess = opts.teapot.shininess,
+    teapotShader.uniforms.uSpecularColor = hexRGBNormalize(opts.teapot.specularColor),
     teapotShader.uniforms.uUseDiffuseLightning = 0
     teapotGeo.draw()
     teapotGeo.unbind()
 
-    firstPassFbo.bind()
+    if (opts.reflectionsOn)
+    {
+      firstPassFbo.bind()
+    }
+    else
+    {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    }
     gl.clearColor(0.9, 0.95, 1, 1)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     // TODO (abiro) antialiasing
     dls = deferredLightningShader
     viewAlignedSquareGeo.bind(dls)
-    dls.uniforms.uAmbientLightColor = ambientLightColor
+    dls.uniforms.uAmbientLightColor = hexRGBNormalize(opts.lights.ambientColor)
     dls.uniforms.uLightPosition = lightViewPosition
     dls.uniforms.uViewPosSampler = deferredShadingFbo.color[0].bind(0)
     dls.uniforms.uNormalSampler = deferredShadingFbo.color[1].bind(1)
@@ -202,23 +218,25 @@ window.onload = function onload () {
     viewAlignedSquareGeo.draw()
     viewAlignedSquareGeo.unbind()
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+    if (opts.reflectionsOn)
+    {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    ssr = screenSpaceReflectionsShader
-    viewAlignedSquareGeo.bind(ssr)
-    ssr.uniforms.uFbo = {
-      size: [gl.drawingBufferWidth, gl.drawingBufferHeight],
-      viewPosSampler: deferredShadingFbo.color[0].bind(0),
-      normalSampler: deferredShadingFbo.color[1].bind(1),
-      colorSampler: firstPassFbo.color[0].bind(2),
-      //colorSampler: deferredShadingFbo.color[2].bind(2),
-      isSpecularSampler: deferredShadingFbo.color[3].bind(3)
+      ssr = screenSpaceReflectionsShader
+      viewAlignedSquareGeo.bind(ssr)
+      ssr.uniforms.uEmphasizeReflections = opts.emphasizeReflections
+      ssr.uniforms.uFbo = {
+        size: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+        viewPosSampler: deferredShadingFbo.color[0].bind(0),
+        normalSampler: deferredShadingFbo.color[1].bind(1),
+        colorSampler: firstPassFbo.color[0].bind(2),
+        isSpecularSampler: deferredShadingFbo.color[3].bind(3)
+      }
+      ssr.uniforms.uProjection = projectionMatrix
+      viewAlignedSquareGeo.draw()
+      viewAlignedSquareGeo.unbind()
     }
-    //ssr.uniforms.uFirstPassColorSampler = firstPassFbo.color[0].bind(4)
-    ssr.uniforms.uProjection = projectionMatrix
-    viewAlignedSquareGeo.draw()
-    viewAlignedSquareGeo.unbind()
 
     window.requestAnimationFrame(drawObjects)
   }
@@ -231,14 +249,29 @@ window.onload = function onload () {
     throw new Error('The OES_texture_float extension is unavailable.')
   }
 
-  //window.addEventListener('resize', fitCanvas(canvas), false)
-
   canvas.width = width * devicePixelRatio;
   canvas.height = height * devicePixelRatio;
 
   canvas.style.width = width + 'px';
   canvas.style.height = height + 'px';
   canvas.style.border = 'solid 1px';
+
+  gui.add(opts, 'emphasizeReflections')
+  gui.add(opts, 'reflectionsOn')
+
+  guiFolders.floor = gui.addFolder('Floor')
+  guiFolders.floor.add(opts.floor, 'shininess', 1, 50)
+  guiFolders.floor.addColor(opts.floor, 'specularColor')
+  
+  guiFolders.lights = gui.addFolder('Lights')
+  guiFolders.lights.add(opts.lights, 'posX', -100, 100)
+  guiFolders.lights.add(opts.lights, 'posY', 0, 100)
+  guiFolders.lights.add(opts.lights, 'posZ', -100, 100)
+  guiFolders.lights.addColor(opts.lights, 'ambientColor')
+
+  guiFolders.teapot = gui.addFolder('Teapot')
+  guiFolders.teapot.add(opts.teapot, 'shininess', 1, 50)
+  guiFolders.teapot.addColor(opts.teapot, 'specularColor')
 
   gl.enable(gl.DEPTH_TEST)
   gl.enable(gl.CULL_FACE)

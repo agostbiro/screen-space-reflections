@@ -10,6 +10,8 @@ precision highp float;
 // TODO (abiro) make this configurable
 const int MAX_BOUNCES = 1;
 
+uniform bool uEmphasizeReflections;
+
 uniform mat4 uProjection;
 
 uniform FBO uFbo;
@@ -67,7 +69,9 @@ void main()
     weight = (cumulativeDistance == 0.0) ? 0.0 : 1.0 / cumulativeDistance;
 
     // TODO (abiro) alpha?
-    gl_FragColor.rgb += nextFragment.color.rgb * weight;
+    gl_FragColor.rgb = uEmphasizeReflections ?
+                       nextFragment.color.rgb :
+                       gl_FragColor.rgb + nextFragment.color.rgb * weight;
 
     prevViewPosition = fragment.viewPos;
     fragment = nextFragment;
