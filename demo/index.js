@@ -13,6 +13,7 @@ var createTexture = require('gl-texture2d')
 var createViewAlignedSquare = require('../lib/view-aligned-square.js')
 var datGui = require('dat-gui')
 var floor = require('./lib/floor.js')
+var FPSMeter = require('./lib/fpsmeter.js')
 var getContext = require('webgl-context')
 var glGeometry = require('gl-geometry')
 var glShader = require('gl-shader')
@@ -34,6 +35,8 @@ window.onload = function onload () {
 
     gui = new datGui.GUI(),
     guiFolders = {},
+
+    meter = new FPSMeter({theme: 'transparent', show: 'ms'}),
 
     camera = createCanvasOrbitCamera(canvas, {pan: false}),
 
@@ -110,6 +113,8 @@ window.onload = function onload () {
   function drawObjects () {
     var dls,
       ssr
+
+    meter.tick()
 
     camera.view(viewMatrix)
     camera.tick()
