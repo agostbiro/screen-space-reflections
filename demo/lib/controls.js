@@ -32,7 +32,7 @@ function attachCamera (canvas, opts) {
   var mbut = mb(canvas, opts.rotate)
   var mpos = mp(canvas)
   var camera = createCamera(
-    [0, -40, 40]
+    [60, 60, -60]
     , [0, 0, 0]
     , [0, 1, 0]
   )

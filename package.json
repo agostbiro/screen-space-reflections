@@ -39,7 +39,7 @@
     "mouse-position": "^1.0.0",
     "mouse-pressed": "0.0.1",
     "normals": "^1.0.0",
-    "orbit-camera": "0.0.3",
+    "orbit-camera": "1.0.0",
     "scroll-speed": "^1.0.0",
     "teapot": "^1.0.0",
     "underscore": "^1.8.3",
