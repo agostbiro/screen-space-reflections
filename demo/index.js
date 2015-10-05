@@ -6,6 +6,7 @@
 // Browserify can't handle comma-separated requires.
 var boundingBox = require('vertices-bounding-box')
 var bunny = require('bunny')
+var initCopy = require('./lib/copy/copy.js')
 var createCanvasOrbitCamera = require('./lib/controls.js')
 var createFBO = require('gl-fbo')
 var createTexture = require('gl-texture2d')
@@ -29,30 +30,10 @@ window.onload = function onload () {
     WEBGL_draw_buffers_extension = gl.getExtension('WEBGL_draw_buffers'),
     OES_texture_float_extension = gl.getExtension('OES_texture_float'),
 
+    copy = initCopy(gl),
+
     gui = new datGui.GUI(),
     guiFolders = {},
-
-    devicePixelRatio = window.devicePixelRatio || 1,
-    width = 512,
-    height = 512,
-
-    // Color buffers are eye-space position, eye-space normal, diffuse color
-    // and specular color, respectively. A value larger than 0 in the alpha
-    // channels of the diffuse and specular colors means the appropriate
-    // lightning model is used.
-    deferredShadingFbo = createFBO(
-      gl,
-      [width * devicePixelRatio, height * devicePixelRatio],
-      {
-        float: true,
-        color: 4
-      }
-    ),
-
-    firstPassFbo = createFBO(
-      gl,
-      [width * devicePixelRatio, height * devicePixelRatio]
-    ),
 
     camera = createCanvasOrbitCamera(canvas, {pan: false}),
 
@@ -109,6 +90,15 @@ window.onload = function onload () {
     bunnyRotations = [Math.PI / 2, -Math.PI / 2, 0],
 
     bunnyBoundingBox,
+    bufferSize,
+    displaySize,
+    deferredShadingFbo,
+    devicePixelRatio,
+    displayDim,
+    displayScaledSize,
+    firstPassFbo,
+    outFbo,
+    size,
     teapotBoundingBox
 
   function hexRGBNormalize (hex) {
@@ -124,17 +114,12 @@ window.onload = function onload () {
     camera.view(viewMatrix)
     camera.tick()
 
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
-
-    // TODO (abiro) Will this rebuild the FBO on each frame or only
-    // if the values actually changed?
-    deferredShadingFbo.shape = [gl.drawingBufferWidth, gl.drawingBufferHeight]
-    firstPassFbo.shape = [gl.drawingBufferWidth, gl.drawingBufferHeight]
+    gl.viewport(0, 0, bufferSize[0], bufferSize[1])
 
     mat4.perspective(
       projectionMatrix,
       Math.PI / 4,
-      gl.drawingBufferWidth / gl.drawingBufferHeight,
+      bufferSize[0] / bufferSize[1],
       1,
       300
     )
@@ -194,7 +179,7 @@ window.onload = function onload () {
     if (opts.reflectionsOn) {
       firstPassFbo.bind()
     } else {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      outFbo.bind()
     }
     gl.clearColor(0.9, 0.95, 1, 1)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -212,14 +197,14 @@ window.onload = function onload () {
     viewAlignedSquareGeo.unbind()
 
     if (opts.reflectionsOn) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      outFbo.bind()
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
       ssr = screenSpaceReflectionsShader
       viewAlignedSquareGeo.bind(ssr)
       ssr.uniforms.uEmphasizeReflections = opts.emphasizeReflections
       ssr.uniforms.uFbo = {
-        size: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+        size: bufferSize,
         viewPosSampler: deferredShadingFbo.color[0].bind(0),
         normalSampler: deferredShadingFbo.color[1].bind(1),
         colorSampler: firstPassFbo.color[0].bind(2),
@@ -229,6 +214,9 @@ window.onload = function onload () {
       viewAlignedSquareGeo.draw()
       viewAlignedSquareGeo.unbind()
     }
+
+    outFbo.color[0].magFilter = gl.LINEAR
+    copy(outFbo.color[0], 0, 0, displayScaledSize[0], displayScaledSize[1])
 
     window.requestAnimationFrame(drawObjects)
   }
@@ -241,12 +229,38 @@ window.onload = function onload () {
     throw new Error('The OES_texture_float extension is unavailable.')
   }
 
-  canvas.width = width * devicePixelRatio
-  canvas.height = height * devicePixelRatio
+  devicePixelRatio = window.devicePixelRatio || 1;
+  size = 512;
+  bufferSize = [size, size];
+  displayDim = Math.max(
+    Math.min(window.innerWidth, window.innerHeight),
+    size
+  );
+  displaySize = [displayDim, displayDim];
+  displayDim *= devicePixelRatio
+  displayScaledSize = [displayDim, displayDim];
 
-  canvas.style.width = width + 'px'
-  canvas.style.height = height + 'px'
+  canvas.width = displayScaledSize[0]
+  canvas.height = displayScaledSize[1]
+
+  canvas.style.width = displaySize[0] + 'px'
+  canvas.style.height = displaySize[1] + 'px'
   canvas.style.border = 'solid 1px'
+
+  // Color buffers are eye-space position, eye-space normal, diffuse color
+  // and specular color, respectively. A value larger than 0 in the alpha
+  // channels of the diffuse and specular colors means the appropriate
+  // lightning model is used.
+  deferredShadingFbo = createFBO(
+    gl,
+    bufferSize,
+    {
+      float: true,
+      color: 4
+    }
+  );
+  firstPassFbo = createFBO(gl, bufferSize);
+  outFbo = createFBO(gl, bufferSize);
 
   gui.add(opts, 'emphasizeReflections')
   gui.add(opts, 'reflectionsOn')
