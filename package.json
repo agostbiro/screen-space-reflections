@@ -30,6 +30,7 @@
     "gl-vec3": "^1.0.3",
     "glsl-diffuse-lambert": "^1.0.0",
     "glsl-inverse": "^1.0.0",
+    "glsl-random": "^0.0.5",
     "glsl-specular-blinn-phong": "^1.0.0",
     "glsl-transpose": "^1.0.0",
     "glslify": "^2.2.1",

@@ -331,7 +331,7 @@ window.onload = function onload () {
   mat4.translate(
     bunnyModelMatrix,
     bunnyModelMatrix,
-    [0, Math.abs(bunnyBoundingBox[0][1]), 0]
+    [0, -Math.abs(bunnyBoundingBox[0][1]), 0]
   )
 
   mat4.translate(

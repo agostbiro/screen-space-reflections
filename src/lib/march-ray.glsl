@@ -1,3 +1,5 @@
+#pragma glslify: random = require('glsl-random')
+
 Fragment marchRay(in FBO fbo,
                   in Fragment fragment, 
                   in mat4 projectionMatrix,
@@ -96,9 +98,11 @@ Fragment marchRay(in FBO fbo,
 
   stepRatio = 1.0 / length(searchDirection);
 
+  nextPos = vec2(0.0);
+
   for (float i = 1.0; i <= MAX_ITERATIONS; i += 1.0)
   {
-    steps = i * MAX_STRIDE;
+    steps = i * MAX_STRIDE * random(nextPos);
 
     // Find the next position in screen space to test for a hit along the 
     // reflected ray.

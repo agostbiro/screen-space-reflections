@@ -1,13 +1,13 @@
 module.exports = {
   color1: '#ffae23',
-  emphasizeReflections: false,
+  emphasizeReflections: true,
   floor: {
     shininess: 20,
     specularColor: '#ffffff'
   },
   lights: {
     ambientColor: '#545454',
-    posX: 0,
+    posX: -100,
     posY: 100,
     posZ: 100
   },
