@@ -1,5 +1,5 @@
 ## Screen Space Reflections with WebGL
 
-Work in progress
+This is work in progress
 
-TODO (abiro)
+See live demo here: http://abiro.github.io/screen-space-reflections/
